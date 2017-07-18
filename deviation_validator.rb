@@ -16,6 +16,8 @@ module DeviationValidator
 
   PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 
+  DAILY_LOG_FILE = "log/#{Time.now.strftime('%Y-%m-%d')}.txt"
+
   STOP_NAMES.each do |name|
     stop_id = STOP_IDS[name]
     departures_uri = URI([PVTA_API_URL, 'stopdepartures', 'get', stop_id].join('/'))
@@ -32,6 +34,13 @@ module DeviationValidator
           hours, minutes, _seconds = deviation.split(':').map(&:to_i)
           if hours > 0 || minutes > 10
             # THE BUS IS LATE!
+            trip = dept.fetch('Trip')
+            run_id = trip.fetch('RunId')
+            headsign = trip.fetch('InternetServiceDesc')
+            timestamp = Time.now.strftime '%l:%M %P'
+            File.open DAILY_LOG_FILE, 'a' do |file|
+              file.puts "#{timestamp}, #{name}: Run #{run_id} (#{headsign}), deviation #{deviation}"
+            end
           end
         end
       end
