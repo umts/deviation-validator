@@ -19,7 +19,7 @@ module DeviationValidator
   DAILY_LOG_FILE = "log/#{Time.now.strftime('%Y-%m-%d')}.txt"
 
   def query_departures(stop_id)
-    departures_uri = URI([PVTA_API_URL, 'stopdepartures', 'get', stop_id].join('/'))
+    departures_uri = URI("#{PVTA_API_URL}/stopdepartures/get/#{stop_id}")
     JSON.parse(Net::HTTP.get(departures_uri))
   end
 
@@ -29,7 +29,9 @@ module DeviationValidator
     headsign = trip.fetch('InternetServiceDesc')
     timestamp = Time.now.strftime '%l:%M %P'
     File.open DAILY_LOG_FILE, 'a' do |file|
-      file.puts "#{timestamp}, #{name}: Run #{run_id} (#{headsign}), deviation #{deviation}"
+      identifier = "#{timestamp}, #{name}: "
+      data = "Run #{run_id} (#{headsign}), deviation #{deviation}"
+      file.puts identifier + data
     end
   end
 
@@ -40,20 +42,22 @@ module DeviationValidator
       route_directions = departures.first.fetch 'RouteDirections'
       route_directions.each do |route_dir|
         departures = route_dir.fetch 'Departures'
-        departures.each do |departure|
-          # Example: "00:05:30", meaning that the bus is 5 1/2 minutes behind
-          deviation = departure.fetch 'Dev'
-          if deviation[0] == '-'
-            # THE BUS IS EARLY!
-            report_deviation(departure)
-          else
-            hours, minutes, _seconds = deviation.split(':').map(&:to_i)
-            if hours > 0 || minutes > 10
-              # THE BUS IS LATE!
-              report_deviation(departure)
-            end
-          end
-        end
+        departures.each(&method(:validate_departure))
+      end
+    end
+  end
+
+  def validate_departure(departure)
+    # Example: "00:05:30", meaning that the bus is 5 1/2 minutes behind
+    deviation = departure.fetch 'Dev'
+    if deviation[0] == '-'
+      # THE BUS IS EARLY!
+      report_deviation(departure)
+    else
+      hours, minutes, _seconds = deviation.split(':').map(&:to_i)
+      if hours.positive? || minutes > 10
+        # THE BUS IS LATE!
+        report_deviation(departure)
       end
     end
   end

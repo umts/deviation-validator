@@ -15,7 +15,7 @@ describe DeviationValidator do
       call
     end
     it 'parses it as JSON and returns the data' do
-      data = { "apples" => 2, "bananas" => 17.5 }
+      data = { 'apples' => 2, 'bananas' => 17.5 }
       expect(Net::HTTP).to receive(:get)
         .and_return data.to_json
       expect(call).to eql data
@@ -29,7 +29,12 @@ describe DeviationValidator do
   end
 
   describe 'search' do
+    it 'interpolated stop names'
+    it 'parses the expected data structure to find departures'
     it 'queries departures'
+  end
+
+  describe 'validate_departure' do
     it 'parses the expected data structure to scan for deviations'
     it 'reports negative deviations'
     it 'reports deviations of over ten minutes'
