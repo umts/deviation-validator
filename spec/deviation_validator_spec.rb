@@ -2,10 +2,24 @@
 
 require 'spec_helper'
 
+include DeviationValidator
+
 describe DeviationValidator do
   describe 'query_departures' do
-    it 'queries the expected URI'
-    it 'parses it as JSON and returns the data'
+    let(:call) { query_departures 72 }
+    it 'queries the expected URI' do
+      stub_const('DeviationValidator::PVTA_API_URL', 'api_url')
+      expected_uri = URI('api_url/stopdepartures/get/72')
+      expect(Net::HTTP).to receive(:get)
+        .with(expected_uri).and_return '{}'
+      call
+    end
+    it 'parses it as JSON and returns the data' do
+      data = { "apples" => 2, "bananas" => 17.5 }
+      expect(Net::HTTP).to receive(:get)
+        .and_return data.to_json
+      expect(call).to eql data
+    end
   end
 
   describe 'report_deviation' do

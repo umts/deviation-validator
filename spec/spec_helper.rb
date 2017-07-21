@@ -4,4 +4,4 @@
 
 require 'rspec'
 require 'webmock/rspec'
-require_relative 'deviation_validator'
+require_relative '../deviation_validator'
