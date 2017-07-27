@@ -15,7 +15,7 @@ describe DeviationValidator do
       call
     end
     it 'parses it as JSON and returns the data' do
-      data = { "apples" => 2, "bananas" => 17.5 }
+      data = { 'apples' => 2, 'bananas' => 17.5 }
       expect(Net::HTTP).to receive(:get)
         .and_return data.to_json
       expect(call).to eql data

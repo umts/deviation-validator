@@ -48,7 +48,7 @@ module DeviationValidator
             report_deviation(departure)
           else
             hours, minutes, _seconds = deviation.split(':').map(&:to_i)
-            if hours > 0 || minutes > 10
+            if hours.positive? || minutes > 10
               # THE BUS IS LATE!
               report_deviation(departure)
             end
