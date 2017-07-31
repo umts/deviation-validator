@@ -4,7 +4,7 @@ require_relative 'deviation_validator'
 include DeviationValidator
 
 namespace :deviations do
-  task :email_digest do
+  task :email_log do
     DeviationValidator.email_log!
   end
 
