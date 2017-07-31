@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+gem 'pony'
 gem 'rake'
+gem 'whenever'
 
 group :development, :test do
   gem 'pry-byebug', require: false

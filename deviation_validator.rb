@@ -2,7 +2,8 @@
 
 require 'json'
 require 'net/http'
-require 'pry-byebug'
+require 'pony'
+require 'pry-byebug' # TODO: remove
 
 module DeviationValidator
   raise <<~MESSAGE unless File.file? 'stops.txt'
@@ -16,7 +17,22 @@ module DeviationValidator
 
   PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 
-  DAILY_LOG_FILE = "log/#{Time.now.strftime('%Y-%m-%d')}.txt"
+  DATE = Time.now.strftime('%Y-%m-%d')
+
+  DAILY_LOG_FILE = "log/#{DATE}.txt"
+
+  # Intended to be run every day at 11:59 pm.
+  def email_log!
+    mail_settings = { to: 'transit-it@admin.umass.edu',
+                      from: 'transit-it@admin.umass.edu',
+                      subject: "Deviation Daily Digest #{DATE}" }
+    if ENV['development']
+      # Use mailcatcher in production
+      mail_settings.merge via: :smtp,
+        via_options: { address: 'localhost', port: 1025 }
+    end
+    Pony.mail MAIL_SETTINGS
+  end
 
   def query_departures(stop_id)
     departures_uri = URI([PVTA_API_URL, 'stopdepartures', 'get', stop_id].join('/'))
