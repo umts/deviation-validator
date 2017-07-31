@@ -26,6 +26,7 @@ module DeviationValidator
     mail_settings = { to: 'transit-it@admin.umass.edu',
                       from: 'transit-it@admin.umass.edu',
                       subject: "Deviation Daily Digest #{DATE}" }
+    mail_settings[:html_body] = File.read(DAILY_LOG_FILE)
     if ENV['development']
       # Use mailcatcher in production
       mail_settings.merge via: :smtp,
