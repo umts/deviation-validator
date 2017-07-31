@@ -6,11 +6,40 @@ include DeviationValidator
 
 describe DeviationValidator do
   describe 'email_log' do
-    it 'mails the contents of the log file'
-    it 'mails to transit-it'
-    it 'mails from transit-it'
+    before :each do
+      stub_const('ENV', 'DEVELOPMENT' => development)
+      stub_const('DeviationValidator::DAILY_LOG_FILE', :log_file)
+      expect(File).to receive(:read).with(:log_file).and_return :file_contents
+    end
+    let(:call) { email_log }
+    let(:development) { false }
+    let :set_mailer_expectation do
+      expect(Pony).to receive(:mail).with hash_including @mail_params
+    end
+    let(:transit_it) { 'transit-it@admin.umass.edu' }
+    it 'mails the contents of the log file' do
+      @mail_params = { html_body: :file_contents }
+      set_mailer_expectation
+      call
+    end
+    it 'mails to transit-it' do
+      @mail_params = { to: transit_it }
+      set_mailer_expectation
+      call
+    end
+    it 'mails from transit-it' do
+      @mail_params = { from: transit_it }
+      set_mailer_expectation
+      call
+    end
     context 'in development' do
-      it 'mails via smtp at localhost:1025'
+      let(:development) { true }
+      it 'mails via smtp at localhost:1025' do
+        @mail_params = { via: :smtp,
+                         via_options: { address: 'localhost', port: 1025 } }
+        set_mailer_expectation
+        call
+      end
     end
   end
 

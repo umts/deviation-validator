@@ -27,9 +27,9 @@ module DeviationValidator
                       from: 'transit-it@admin.umass.edu',
                       subject: "Deviation Daily Digest #{DATE}" }
     mail_settings[:html_body] = File.read(DAILY_LOG_FILE)
-    if ENV['development']
-      # Use mailcatcher in production
-      mail_settings.merge via: :smtp,
+    if ENV['DEVELOPMENT']
+      # Use mailcatcher in development
+      mail_settings.merge! via: :smtp,
         via_options: { address: 'localhost', port: 1025 }
     end
     Pony.mail mail_settings
