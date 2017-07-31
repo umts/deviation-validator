@@ -5,7 +5,7 @@ include DeviationValidator
 
 namespace :deviations do
   task :email_log do
-    DeviationValidator.email_log!
+    DeviationValidator.email_log
   end
 
   task :search do

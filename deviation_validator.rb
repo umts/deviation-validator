@@ -22,7 +22,7 @@ module DeviationValidator
   DAILY_LOG_FILE = "log/#{DATE}.txt"
 
   # Intended to be run every day at 11:59 pm.
-  def email_log!
+  def email_log
     mail_settings = { to: 'transit-it@admin.umass.edu',
                       from: 'transit-it@admin.umass.edu',
                       subject: "Deviation Daily Digest #{DATE}" }

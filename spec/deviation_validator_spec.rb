@@ -5,6 +5,15 @@ require 'spec_helper'
 include DeviationValidator
 
 describe DeviationValidator do
+  describe 'email_log' do
+    it 'mails the contents of the log file'
+    it 'mails to transit-it'
+    it 'mails from transit-it'
+    context 'in development' do
+      it 'mails via smtp at localhost:1025'
+    end
+  end
+
   describe 'query_departures' do
     let(:call) { query_departures 72 }
     it 'queries the expected URI' do
