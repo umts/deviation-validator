@@ -32,7 +32,7 @@ module DeviationValidator
       mail_settings.merge via: :smtp,
         via_options: { address: 'localhost', port: 1025 }
     end
-    Pony.mail MAIL_SETTINGS
+    Pony.mail mail_settings
   end
 
   def query_departures(stop_id)
