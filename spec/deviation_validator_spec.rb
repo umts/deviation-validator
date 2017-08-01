@@ -79,11 +79,55 @@ describe DeviationValidator do
     end
   end
 
+  # I didn't feel the need to write a `let` statement aliasing `result`
+  # for `search`.
   describe 'search' do
-    it 'queries departures'
-    it 'parses the expected data structure to scan for deviations'
-    it 'reports negative deviations'
-    it 'reports deviations of over ten minutes'
-    it 'does not report deviations of under ten minutes'
+    let :departures do
+      [
+        { 'RouteDirections' => {
+            'Departures' => [
+              { 'Dev' => deviation }
+            ]
+          }
+        }
+      ]
+    end
+    let(:deviation) { '00:00:00' }
+    let :setup_expectation do
+      stub_const 'DeviationValidator::STOP_NAMES', ['Stop Name']
+      stub_const 'DeviationValidator::STOP_IDS', { 'Stop Name' => :stop_id }
+      expect(DeviationValidator).to receive(:query_departures)
+        .with(:stop_id).and_return departures
+    end
+    # If this test fails, it's because the data structure the method is using
+    # isn't what's created in this test, so `fetch` calls are failing.
+    it 'parses the expected query data structure to scan for deviations' do
+      setup_expectation
+      search
+    end
+    context 'deviations' do
+      before(:each) { setup_expectation }
+      context 'with a negative deviation' do
+        let(:deviation) { '-00:00:30' }
+        it 'reports' do
+          expect(DeviationValidator).to receive :report_deviation
+          search
+        end
+      end
+      context 'with a deviation of 10 minutes or more' do
+        let(:deviation) { '00:10:15' }
+        it 'reports' do
+          expect(DeviationValidator).to receive :report_deviation
+          search
+        end
+      end
+      context 'with a deviation of under 10 minutes' do
+        let(:deviation) { '00:09:45' }
+        it 'does not report' do
+          expect(DeviationValidator).not_to receive :report_deviation
+          search
+        end
+      end
+    end
   end
 end
