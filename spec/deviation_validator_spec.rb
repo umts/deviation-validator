@@ -84,11 +84,13 @@ describe DeviationValidator do
   describe 'search' do
     let :departures do
       [
-        { 'RouteDirections' => {
-            'Departures' => [
-              { 'Dev' => deviation }
-            ]
-          }
+        { 'RouteDirections' => [
+            {
+              'Departures' => [
+                { 'Dev' => deviation }
+              ]
+            }
+          ]
         }
       ]
     end
@@ -96,7 +98,7 @@ describe DeviationValidator do
     let :setup_expectation do
       stub_const 'DeviationValidator::STOP_NAMES', ['Stop Name']
       stub_const 'DeviationValidator::STOP_IDS', { 'Stop Name' => :stop_id }
-      expect(DeviationValidator).to receive(:query_departures)
+      expect_any_instance_of(DeviationValidator).to receive(:query_departures)
         .with(:stop_id).and_return departures
     end
     # If this test fails, it's because the data structure the method is using
@@ -110,21 +112,24 @@ describe DeviationValidator do
       context 'with a negative deviation' do
         let(:deviation) { '-00:00:30' }
         it 'reports' do
-          expect(DeviationValidator).to receive :report_deviation
+          expect_any_instance_of(DeviationValidator)
+            .to receive :report_deviation
           search
         end
       end
       context 'with a deviation of 10 minutes or more' do
         let(:deviation) { '00:10:15' }
         it 'reports' do
-          expect(DeviationValidator).to receive :report_deviation
+          expect_any_instance_of(DeviationValidator)
+            .to receive :report_deviation
           search
         end
       end
       context 'with a deviation of under 10 minutes' do
         let(:deviation) { '00:09:45' }
         it 'does not report' do
-          expect(DeviationValidator).not_to receive :report_deviation
+          expect_any_instance_of(DeviationValidator)
+            .not_to receive :report_deviation
           search
         end
       end

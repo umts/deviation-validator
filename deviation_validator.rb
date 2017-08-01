@@ -53,8 +53,8 @@ module DeviationValidator
   end
 
   def search
-    STOP_NAMES.each do |name|
-      stop_id = STOP_IDS[name]
+    STOP_NAMES.each do |stop_name|
+      stop_id = STOP_IDS[stop_name]
       departures = query_departures(stop_id)
       route_directions = departures.first.fetch 'RouteDirections'
       route_directions.each do |route_dir|
@@ -67,7 +67,7 @@ module DeviationValidator
             report_deviation(stop_name, departure)
           else
             hours, minutes, _seconds = deviation.split(':').map(&:to_i)
-            if hours.positive? || minutes > 10
+            if hours.positive? || minutes >= 10
               # THE BUS IS LATE!
               report_deviation(departure)
             end
