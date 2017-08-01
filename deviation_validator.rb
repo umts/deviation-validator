@@ -40,14 +40,15 @@ module DeviationValidator
     JSON.parse(Net::HTTP.get(departures_uri))
   end
 
-  def report_deviation(departure)
+  def report_deviation(stop_name, departure)
+    deviation = departure.fetch('Dev')
     trip = departure.fetch('Trip')
     run_id = trip.fetch('RunId')
     headsign = trip.fetch('InternetServiceDesc')
     timestamp = Time.now.strftime '%l:%M %P'
-    File.mkdir 'log' unless File.directory? 'log'
+    FileUtils.mkdir 'log' unless File.directory? 'log'
     File.open DAILY_LOG_FILE, 'a' do |file|
-      file.puts "#{timestamp}, #{name}: Run #{run_id} (#{headsign}), deviation #{deviation}"
+      file.puts "#{timestamp}, #{stop_name}: Run #{run_id} (#{headsign}), deviation #{deviation}"
     end
   end
 
@@ -63,7 +64,7 @@ module DeviationValidator
           deviation = departure.fetch 'Dev'
           if deviation[0] == '-'
             # THE BUS IS EARLY!
-            report_deviation(departure)
+            report_deviation(stop_name, departure)
           else
             hours, minutes, _seconds = deviation.split(':').map(&:to_i)
             if hours.positive? || minutes > 10

@@ -61,9 +61,22 @@ describe DeviationValidator do
   end
 
   describe 'report_deviation' do
-    it 'uses the expected attributes of a Trip object'
-    it 'appends to a log file'
-    it 'has the expected log entry format'
+    let(:departure) { double }
+    let(:trip) { double }
+    let(:file) { double }
+    it 'appends to a log file with the correct entry format' do
+      expect(departure).to receive(:fetch).with('Trip').and_return trip
+      expect(departure).to receive(:fetch).with('Dev').and_return 'DEVIATION'
+      expect(trip).to receive(:fetch).with('RunId')
+        .and_return 'RUN'
+      expect(trip).to receive(:fetch).with('InternetServiceDesc')
+        .and_return 'HEADSIGN'
+      stub_const 'DeviationValidator::DAILY_LOG_FILE', :log_file
+      expect(File).to receive(:open).with(:log_file, 'a').and_yield file
+      timestamp = '12:00 pm, STOP NAME: Run RUN (HEADSIGN), deviation DEVIATION'
+      expect(file).to receive(:puts).with timestamp
+      Timecop.freeze(Time.new 2017, 7, 31, 12) { report_deviation('STOP NAME', departure) }
+    end
   end
 
   describe 'search' do
