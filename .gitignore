@@ -1,2 +1,4 @@
 stops.txt
 log/*.txt
+/coverage
+!/coverage/.last_run.json

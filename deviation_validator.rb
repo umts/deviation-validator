@@ -2,7 +2,8 @@
 
 require 'json'
 require 'net/http'
-require 'pry-byebug'
+require 'pony'
+require 'pry-byebug' # TODO: remove
 
 module DeviationValidator
   raise <<~MESSAGE unless File.file? 'stops.txt'
@@ -16,28 +17,46 @@ module DeviationValidator
 
   PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 
-  DAILY_LOG_FILE = "log/#{Time.now.strftime('%Y-%m-%d')}.txt"
+  DATE = Time.now.strftime('%Y-%m-%d')
+
+  DAILY_LOG_FILE = "log/#{DATE}.txt"
+
+  # Intended to be run every day at 11:59 pm.
+  def email_log
+    mail_settings = { to: 'transit-it@admin.umass.edu',
+                      from: 'transit-it@admin.umass.edu',
+                      subject: "Deviation Daily Digest #{DATE}" }
+    mail_settings[:html_body] = File.read(DAILY_LOG_FILE)
+    if ENV['DEVELOPMENT']
+      # Use mailcatcher in development
+      mail_settings.merge! via: :smtp,
+        via_options: { address: 'localhost', port: 1025 }
+    end
+    Pony.mail mail_settings
+  end
 
   def query_departures(stop_id)
     departures_uri = URI("#{PVTA_API_URL}/stopdepartures/get/#{stop_id}")
     JSON.parse(Net::HTTP.get(departures_uri))
   end
 
-  def report_deviation(departure)
+  def report_deviation(stop_name, departure)
+    deviation = departure.fetch('Dev')
     trip = departure.fetch('Trip')
     run_id = trip.fetch('RunId')
     headsign = trip.fetch('InternetServiceDesc')
     timestamp = Time.now.strftime '%l:%M %P'
+    identifier = "#{timestamp}, #{stop_name}: "
+    data = "Run #{run_id} (#{headsign}), deviation #{deviation}"
+    FileUtils.mkdir 'log' unless File.directory? 'log'
     File.open DAILY_LOG_FILE, 'a' do |file|
-      identifier = "#{timestamp}, #{name}: "
-      data = "Run #{run_id} (#{headsign}), deviation #{deviation}"
       file.puts identifier + data
     end
   end
 
   def search
-    STOP_NAMES.each do |name|
-      stop_id = STOP_IDS[name]
+    STOP_NAMES.each do |stop_name|
+      stop_id = STOP_IDS[stop_name]
       departures = query_departures(stop_id)
       route_directions = departures.first.fetch 'RouteDirections'
       route_directions.each do |route_dir|
@@ -55,7 +74,7 @@ module DeviationValidator
       report_deviation(departure)
     else
       hours, minutes, _seconds = deviation.split(':').map(&:to_i)
-      if hours.positive? || minutes > 10
+      if hours.positive? || minutes >= 10
         # THE BUS IS LATE!
         report_deviation(departure)
       end

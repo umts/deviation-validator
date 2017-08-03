@@ -1,7 +1,12 @@
 # frozen_string_literal: true
 
-# TODO: require and use simplecov
+require 'simplecov'
+SimpleCov.start do
+  add_filter '/config/'
+  add_filter '/spec/'
+end
 
 require 'rspec'
+require 'timecop'
 require 'webmock/rspec'
 require_relative '../deviation_validator'
