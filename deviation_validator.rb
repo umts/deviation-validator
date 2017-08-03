@@ -29,8 +29,8 @@ module DeviationValidator
     mail_settings[:html_body] = File.read(DAILY_LOG_FILE)
     if ENV['DEVELOPMENT']
       # Use mailcatcher in development
-      mail_settings.merge! via: :smtp,
-        via_options: { address: 'localhost', port: 1025 }
+      mail_settings[:via] = :smtp
+      mail_settings[:via_options] = { address: 'localhost', port: 1025 }
     end
     Pony.mail mail_settings
   end
@@ -49,9 +49,7 @@ module DeviationValidator
     identifier = "#{timestamp}, #{stop_name}: "
     data = "Run #{run_id} (#{headsign}), deviation #{deviation}"
     FileUtils.mkdir 'log' unless File.directory? 'log'
-    File.open DAILY_LOG_FILE, 'a' do |file|
-      file.puts identifier + data
-    end
+    File.open(DAILY_LOG_FILE, 'a') { |file| file.puts identifier + data }
   end
 
   def search

@@ -68,14 +68,16 @@ describe DeviationValidator do
       expect(departure).to receive(:fetch).with('Trip').and_return trip
       expect(departure).to receive(:fetch).with('Dev').and_return 'DEVIATION'
       expect(trip).to receive(:fetch).with('RunId')
-        .and_return 'RUN'
+                                     .and_return 'RUN'
       expect(trip).to receive(:fetch).with('InternetServiceDesc')
-        .and_return 'HEADSIGN'
+                                     .and_return 'HEADSIGN'
       stub_const 'DeviationValidator::DAILY_LOG_FILE', :log_file
       expect(File).to receive(:open).with(:log_file, 'a').and_yield file
       timestamp = '12:00 pm, STOP NAME: Run RUN (HEADSIGN), deviation DEVIATION'
       expect(file).to receive(:puts).with timestamp
-      Timecop.freeze(Time.new 2017, 7, 31, 12) { report_deviation('STOP NAME', departure) }
+      Timecop.freeze Time.new(2017, 7, 31, 12) do
+        report_deviation 'STOP NAME', departure
+      end
     end
   end
 
@@ -85,19 +87,18 @@ describe DeviationValidator do
     let :departures do
       [
         { 'RouteDirections' => [
-            {
-              'Departures' => [
-                { 'Dev' => deviation }
-              ]
-            }
-          ]
-        }
+          {
+            'Departures' => [
+              { 'Dev' => deviation }
+            ]
+          }
+        ] }
       ]
     end
     let(:deviation) { '00:00:00' }
     let :setup_expectation do
       stub_const 'DeviationValidator::STOP_NAMES', ['Stop Name']
-      stub_const 'DeviationValidator::STOP_IDS', { 'Stop Name' => :stop_id }
+      stub_const 'DeviationValidator::STOP_IDS', 'Stop Name' => :stop_id
       expect_any_instance_of(DeviationValidator).to receive(:query_departures)
         .with(:stop_id).and_return departures
     end
