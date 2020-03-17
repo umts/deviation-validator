@@ -3,30 +3,28 @@
 require 'json'
 require 'net/http'
 require 'pony'
-require 'pry-byebug' # TODO: remove
 
-module DeviationValidator
-  raise <<~MESSAGE unless File.file? 'stops.txt'
-    No config file found. Please see the stops.txt.example \
-    file and create a stops.txt file to match.
-  MESSAGE
-
-  STOP_NAMES = File.read('stops.txt').lines.map(&:strip)
-
-  STOP_IDS = JSON.parse File.read('stops.json')
-
+class DeviationValidator
   PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 
-  DATE = Time.now.strftime('%Y-%m-%d')
+  def initialize
+    raise <<~MESSAGE unless File.file? 'stops.txt'
+      No config file found. Please see the stops.txt.example \
+      file and create a stops.txt file to match.
+    MESSAGE
 
-  DAILY_LOG_FILE = "log/#{DATE}.txt"
+    @date = Time.now.strftime('%Y-%m-%d')
+    @stop_names = File.read('stops.txt').lines.map(&:strip)
+    @stop_ids = JSON.parse File.read('stops.json')
+    @daily_log_file = "log/#{@date}.txt"
+  end
 
   # Intended to be run every day at 11:59 pm.
   def email_log
     mail_settings = { to: 'transit-it@admin.umass.edu',
                       from: 'transit-it@admin.umass.edu',
-                      subject: "Deviation Daily Digest #{DATE}" }
-    mail_settings[:html_body] = File.read(DAILY_LOG_FILE)
+                      subject: "Deviation Daily Digest #{@date}" }
+    mail_settings[:html_body] = File.read(@daily_log_file)
     if ENV['DEVELOPMENT']
       # Use mailcatcher in development
       mail_settings[:via] = :smtp
@@ -34,6 +32,23 @@ module DeviationValidator
     end
     Pony.mail mail_settings
   end
+
+  def search
+    @stop_names.each do |stop_name|
+      stop_id = @stop_ids[stop_name]
+      route_directions = query_departures(stop_id).first.fetch 'RouteDirections'
+      route_directions.each do |route_dir|
+        departures = route_dir.fetch 'Departures'
+        departures.each do |departure|
+          next if validate_departure(departure)
+
+          report_deviation(stop_name, departure)
+        end
+      end
+    end
+  end
+
+  private
 
   def query_departures(stop_id)
     departures_uri = URI("#{PVTA_API_URL}/stopdepartures/get/#{stop_id}")
@@ -48,34 +63,13 @@ module DeviationValidator
     timestamp = Time.now.strftime '%l:%M %P'
     identifier = "#{timestamp}, #{stop_name}: "
     data = "Run #{run_id} (#{headsign}), deviation #{deviation}"
-    FileUtils.mkdir 'log' unless File.directory? 'log'
-    File.open(DAILY_LOG_FILE, 'a') { |file| file.puts identifier + data }
-  end
-
-  def search
-    STOP_NAMES.each do |stop_name|
-      stop_id = STOP_IDS[stop_name]
-      departures = query_departures(stop_id)
-      route_directions = departures.first.fetch 'RouteDirections'
-      route_directions.each do |route_dir|
-        departures = route_dir.fetch 'Departures'
-        departures.each(&method(:validate_departure))
-      end
-    end
+    File.open(@daily_log_file, 'a') { |file| file.puts identifier + data }
   end
 
   def validate_departure(departure)
-    # Example: "00:05:30", meaning that the bus is 5 1/2 minutes behind
     deviation = departure.fetch 'Dev'
-    if deviation[0] == '-'
-      # THE BUS IS EARLY!
-      report_deviation(departure)
-    else
-      hours, minutes, _seconds = deviation.split(':').map(&:to_i)
-      if hours.positive? || minutes >= 10
-        # THE BUS IS LATE!
-        report_deviation(departure)
-      end
-    end
+    hours, minutes, _seconds = deviation.split(':').map(&:to_i)
+
+    deviation[0] != '-' && hours < 1 && minutes < 10
   end
 end
