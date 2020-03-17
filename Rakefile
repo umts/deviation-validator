@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
-require_relative 'deviation_validator'
+require 'pathname'
+$LOAD_PATH.unshift Pathname(__dir__).join('lib').expand_path
+
+require 'deviation_validator'
 
 namespace :deviations do
   desc "Email today's log file"

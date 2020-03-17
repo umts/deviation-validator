@@ -2,21 +2,24 @@
 
 require 'json'
 require 'net/http'
+require 'pathname'
 require 'pony'
 
 class DeviationValidator
   PVTA_API_URL = 'http://bustracker.pvta.com/InfoPoint/rest'
 
   def initialize
-    raise <<~MESSAGE unless File.file? 'stops.txt'
+    root = Pathname(__dir__).join('..').expand_path
+    stops_file = root.join('config', 'stops.txt')
+    raise <<~MESSAGE unless stops_file.file?
       No config file found. Please see the stops.txt.example \
       file and create a stops.txt file to match.
     MESSAGE
 
     @date = Time.now.strftime('%Y-%m-%d')
-    @stop_names = File.read('stops.txt').lines.map(&:strip)
-    @stop_ids = JSON.parse File.read('stops.json')
-    @daily_log_file = "log/#{@date}.txt"
+    @stop_names = stops_file.read.lines.map(&:strip)
+    @stop_ids = JSON.parse root.join('config', 'stops.json').read
+    @daily_log_file = root.join('log', "#{@date}.txt")
   end
 
   # Intended to be run every day at 11:59 pm.
@@ -24,7 +27,7 @@ class DeviationValidator
     mail_settings = { to: 'transit-it@admin.umass.edu',
                       from: 'transit-it@admin.umass.edu',
                       subject: "Deviation Daily Digest #{@date}" }
-    mail_settings[:html_body] = File.read(@daily_log_file)
+    mail_settings[:html_body] = @daily_log_file.read
     if ENV['DEVELOPMENT']
       # Use mailcatcher in development
       mail_settings[:via] = :smtp
@@ -63,7 +66,7 @@ class DeviationValidator
     timestamp = Time.now.strftime '%l:%M %P'
     identifier = "#{timestamp}, #{stop_name}: "
     data = "Run #{run_id} (#{headsign}), deviation #{deviation}"
-    File.open(@daily_log_file, 'a') { |file| file.puts identifier + data }
+    @daily_log_file.open('a') { |file| file.puts identifier + data }
   end
 
   def validate_departure(departure)
