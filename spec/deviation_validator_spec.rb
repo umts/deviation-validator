@@ -1,17 +1,22 @@
 # frozen_string_literal: true
 
-require 'spec_helper'
+require 'pathname'
+$LOAD_PATH.unshift Pathname(__dir__).join('..', 'lib').expand_path
 
-include DeviationValidator
+require 'deviation_validator'
 
-describe DeviationValidator do
+RSpec.describe DeviationValidator do
+  let(:dv) { DeviationValidator.new }
+
   describe 'email_log' do
+    let(:log_file) { double }
     before :each do
       stub_const('ENV', 'DEVELOPMENT' => development)
-      stub_const('DeviationValidator::DAILY_LOG_FILE', :log_file)
-      expect(File).to receive(:read).with(:log_file).and_return :file_contents
+      dv.instance_variable_set :@daily_log_file, log_file
+      expect(log_file).to receive(:read).and_return :file_contents
     end
-    let(:call) { email_log }
+
+    let(:call) { dv.email_log }
     let(:development) { false }
     let :set_mailer_expectation do
       expect(Pony).to receive(:mail).with hash_including @mail_params
@@ -44,7 +49,7 @@ describe DeviationValidator do
   end
 
   describe 'query_departures' do
-    let(:call) { query_departures 72 }
+    let(:call) { dv.send(:query_departures, 72) }
     it 'queries the expected URI' do
       stub_const('DeviationValidator::PVTA_API_URL', 'api_url')
       expected_uri = URI('api_url/stopdepartures/get/72')
@@ -64,6 +69,12 @@ describe DeviationValidator do
     let(:departure) { double }
     let(:trip) { double }
     let(:file) { double }
+    let(:log_file) { double }
+    before(:each) { dv.instance_variable_set :@daily_log_file, log_file }
+    def call(*args)
+      dv.send(:report_deviation, *args)
+    end
+
     it 'appends to a log file with the correct entry format' do
       expect(departure).to receive(:fetch).with('Trip').and_return trip
       expect(departure).to receive(:fetch).with('Dev').and_return 'DEVIATION'
@@ -71,12 +82,11 @@ describe DeviationValidator do
                                      .and_return 'RUN'
       expect(trip).to receive(:fetch).with('InternetServiceDesc')
                                      .and_return 'HEADSIGN'
-      stub_const 'DeviationValidator::DAILY_LOG_FILE', :log_file
-      expect(File).to receive(:open).with(:log_file, 'a').and_yield file
+      expect(log_file).to receive(:open).with('a').and_yield file
       timestamp = '12:00 pm, STOP NAME: Run RUN (HEADSIGN), deviation DEVIATION'
       expect(file).to receive(:puts).with timestamp
       Timecop.freeze Time.new(2017, 7, 31, 12) do
-        report_deviation 'STOP NAME', departure
+        call 'STOP NAME', departure
       end
     end
   end
@@ -84,6 +94,7 @@ describe DeviationValidator do
   # I didn't feel the need to write a `let` statement aliasing `result`
   # for `search`.
   describe 'search' do
+    let(:deviation) { '00:00:00' }
     let :departures do
       [
         { 'RouteDirections' => [
@@ -95,43 +106,45 @@ describe DeviationValidator do
         ] }
       ]
     end
-    let(:deviation) { '00:00:00' }
+    let(:call) { dv.search }
     let :setup_expectation do
-      stub_const 'DeviationValidator::STOP_NAMES', ['Stop Name']
-      stub_const 'DeviationValidator::STOP_IDS', 'Stop Name' => :stop_id
-      expect_any_instance_of(DeviationValidator).to receive(:query_departures)
+      expect(dv).to receive(:query_departures)
         .with(:stop_id).and_return departures
     end
+
+    before :each do
+      dv.instance_variable_set :@stop_names, ['Stop Name']
+      dv.instance_variable_set :@stop_ids, 'Stop Name' => :stop_id
+    end
+
     # If this test fails, it's because the data structure the method is using
     # isn't what's created in this test, so `fetch` calls are failing.
     it 'parses the expected query data structure to scan for deviations' do
       setup_expectation
-      search
+      expect { call }.not_to raise_exception
     end
+
     context 'deviations' do
       before(:each) { setup_expectation }
       context 'with a negative deviation' do
         let(:deviation) { '-00:00:30' }
         it 'reports' do
-          expect_any_instance_of(DeviationValidator)
-            .to receive :report_deviation
-          search
+          expect(dv).to receive :report_deviation
+          call
         end
       end
       context 'with a deviation of 10 minutes or more' do
         let(:deviation) { '00:10:15' }
         it 'reports' do
-          expect_any_instance_of(DeviationValidator)
-            .to receive :report_deviation
-          search
+          expect(dv).to receive :report_deviation
+          call
         end
       end
       context 'with a deviation of under 10 minutes' do
         let(:deviation) { '00:09:45' }
         it 'does not report' do
-          expect_any_instance_of(DeviationValidator)
-            .not_to receive :report_deviation
-          search
+          expect(dv).not_to receive :report_deviation
+          call
         end
       end
     end

@@ -1,10 +1,17 @@
-AllCops:
-  TargetRubyVersion: 2.4
-
 Metrics/BlockLength:
   Exclude:
     - 'spec/*'
 
+Metrics/MethodLength:
+  Max: 15
+
 # We'll come back to this.
 Style/Documentation:
   Enabled: false
+
+Style/HashEachMethods:
+  Enabled: true
+Style/HashTransformKeys:
+  Enabled: true
+Style/HashTransformValues:
+  Enabled: true

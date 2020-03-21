@@ -1,14 +1,20 @@
 # frozen_string_literal: true
 
-require_relative 'deviation_validator'
-include DeviationValidator
+require 'pathname'
+$LOAD_PATH.unshift Pathname(__dir__).join('lib').expand_path
+
+require 'deviation_validator'
 
 namespace :deviations do
+  desc "Email today's log file"
   task :email_log do
-    DeviationValidator.email_log
+    dv = DeviationValidator.new
+    dv.email_log
   end
 
+  desc 'look for and log abnormal deviations'
   task :search do
-    DeviationValidator.search
+    dv = DeviationValidator.new
+    dv.search
   end
 end
